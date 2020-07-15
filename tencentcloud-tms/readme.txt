@@ -1,5 +1,4 @@
 === 腾讯云文本内容安全（TMS） ===
-Contributors: hankzzhang, tiejunhu, chahuang
 Tags: 腾讯云wordpress, TMS, 评论审核, 文本安全, 腾讯云
 Donate link: https://openapp.qq.com/Wordpress/tms.html
 Requires at least: 5.0

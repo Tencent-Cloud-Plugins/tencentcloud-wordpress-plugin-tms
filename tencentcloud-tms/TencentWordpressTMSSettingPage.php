@@ -65,7 +65,7 @@ function TencentWordpressTMSSettingPage()
                         <form method="post" id="tms-options-form" action="" data-ajax-url="<?php echo $ajaxUrl ?>">
 
                             <div class="form-group">
-                                <label class="col-form-label col-lg-2 lable_padding_left" for="tms-option-custom-key">自定义密钥</label>
+                                <label class="col-form-label col-lg-2 lable_padding_left" for="tms-option-custom-key"><h5>自定义密钥</h5></label>
                                 <div class="custom-control custom-switch div_custom_switch_padding_top"
                                      style="margin-top: -2.3rem;margin-left: 13rem;">
                                     <input type="checkbox" class="custom-control-input"
@@ -78,7 +78,7 @@ function TencentWordpressTMSSettingPage()
                             </div>
 
                             <div class="form-group">
-                                <label class="col-form-label col-lg-2" for="txc-tms-secret-id">SecretId</label>
+                                <label class="col-form-label col-lg-2" for="txc-tms-secret-id"><h5>SecretId</h5></label>
                                 <input id="txc-tms-secret-id" type="password" class="col-lg-5 is-invalid"
                                        placeholder="SecretId" <?php if ( $customKey !== $TMSOptions::CUSTOM_KEY ) {
                                     echo 'disabled="disabled"';
@@ -87,7 +87,7 @@ function TencentWordpressTMSSettingPage()
                                 <span id="tms-secret-id-change-type" class="dashicons dashicons-hidden"></span>
                             </div>
                             <div class="form-group">
-                                <label class="col-form-label col-lg-2" for="txc-tms-secret-key">SecretKey</label>
+                                <label class="col-form-label col-lg-2" for="txc-tms-secret-key"><h5>SecretKey</h5></label>
                                 <input id="txc-tms-secret-key" type="password" class="col-lg-5 is-invalid"
                                        placeholder="SecretKey" <?php if ( $customKey !== $TMSOptions::CUSTOM_KEY ) {
                                     echo 'disabled="disabled"';
@@ -103,7 +103,7 @@ function TencentWordpressTMSSettingPage()
 
                             <div class="form-group">
                                 <label class="col-form-label col-lg-2 lable_padding_left"
-                                       for="tms-allow-option">系统审核通过</label>
+                                       for="tms-allow-option"><h5>系统审核通过</h5></label>
                                 <div class="custom-control custom-switch div_custom_switch_padding_top"
                                      style="margin-top: -2.3rem;margin-left: 13rem;">
                                     <input type="checkbox" id="tms-allow-option"
@@ -117,7 +117,7 @@ function TencentWordpressTMSSettingPage()
                             </div>
 
                             <div class="form-group">
-                                <label class="col-form-label col-lg-2" for="tms-fail-option-forbid">系统审核不通过</label>
+                                <label class="col-form-label col-lg-2" for="tms-fail-option-forbid"><h5>系统审核不通过</h5></label>
                                 <input type="radio" id="tms-fail-option-forbid" value="forbid_submission"
                                        name="tms-fail-option"
                                     <?php if ( $failOption === $TMSOptions::FAIL_TO_FORBID_SUBMISSION ) {
@@ -146,7 +146,7 @@ function TencentWordpressTMSSettingPage()
         </div>
         <button id="tms-options-update-button" type="button" class="btn btn-primary">保存配置</button>
         <div style="text-align: center;flex: 0 0 auto;margin-top: 3rem;">
-            <a href="https://openapp.qq.com/Wordpress/tms.html" target="_blank">文档中心</a> | <a href="https://github.com/Tencent-Cloud-Plugins/tencentcloud-wordpress-plugin-tms" target="_blank">GitHub</a> | <a
+            <a href="https://openapp.qq.com/docs/Wordpress/tms.html" target="_blank">文档中心</a> | <a href="https://github.com/Tencent-Cloud-Plugins/tencentcloud-wordpress-plugin-tms" target="_blank">GitHub</a> | <a
                     href="https://support.qq.com/product/164613" target="_blank">意见反馈</a>
         </div>
     </div>
