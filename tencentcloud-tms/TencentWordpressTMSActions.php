@@ -101,30 +101,9 @@ class TencentWordpressTMSActions
         $staticData['data']['site_id'] = TencentWordpressPluginsSettingActions::getWordPressSiteID();
         $staticData['data']['site_url'] = TencentWordpressPluginsSettingActions::getWordPressSiteUrl();
         $staticData['data']['site_app'] = TencentWordpressPluginsSettingActions::getWordPressSiteApp();
-        $commonOption = get_option(TENCENT_WORDPRESS_COMMON_OPTIONS);
-        if (!empty($commonOption)) {
-            $staticData['data']['site_report_on'] = intval($commonOption['site_report_on']);
-            $staticData['data']['site_sec_on'] = intval($commonOption['site_sec_on']);
-            if ($commonOption['site_report_on'] === true && isset($commonOption['secret_id']) && isset($commonOption['secret_key'])) {
-                $staticData['data']['site_global_uin'] = TencentWordpressPluginsSettingActions::getUserUinBySecret($commonOption['secret_id'], $commonOption['secret_key']);
-            }
-        }
-
         $TMSOptions = self::getTMSOptionsObject();
-        if ($TMSOptions->getCustomKey() === $TMSOptions::CUSTOM_KEY) {
-            $staticData['data']['tms_uin'] = TencentWordpressPluginsSettingActions::getUserUinBySecret($TMSOptions->getSecretID(), $TMSOptions->getSecretKey());
-        }
-        $staticData['data']['tms_sec_on'] = $TMSOptions->getCustomKey();
-        switch ($action){
-            case 'activate':
-            case 'save_configuration':
-                $staticData['data']['tms_on_at'] = time();
-                break;
-            case 'deactivate':
-            case 'uninstall':
-                $staticData['data']['tms_off_at'] = time();
-                break;
-        }
+        $staticData['data']['uin'] = TencentWordpressPluginsSettingActions::getUserUinBySecret($TMSOptions->getSecretID(), $TMSOptions->getSecretKey());
+        $staticData['data']['cust_sec_on'] = $TMSOptions->getCustomKey() === $TMSOptions::CUSTOM_KEY ?1:2;
         return $staticData;
     }
 
@@ -325,7 +304,7 @@ class TencentWordpressTMSActions
             //更新系统讨论设置（在评论显示之前）
             $this->updateOptionsDiscussion($TMSOptions);
             self::requirePluginCenterClass();
-            $staticData = self::getTencentCloudWordPressStaticData('save_configuration');
+            $staticData = self::getTencentCloudWordPressStaticData('save_config');
             TencentWordpressPluginsSettingActions::sendUserExperienceInfo($staticData);
             wp_send_json_success(array('msg' => '保存成功'));
         } catch (Exception $exception) {

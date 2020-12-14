@@ -7,7 +7,7 @@
 | ---------- | ------------------------------------------------------------ |
 | 中文名称     | 腾讯云文本内容安全（TMS）插件                                         |
 | 英文名称   | tencentcloud-tms                                       |
-| 最新版本   | v1.0.0 (2020.06.22)                                           |
+| 最新版本   | v1.0.1 (2020.12.11)                                           |
 | 适用平台 | [WordPress](https://wordpress.org/)                             |
 | 适用产品 | [腾讯云文本内容安全（SMS）](https://cloud.tencent.com/product/tms)   |
 | 文档中心   | [春雨文档中心](https://openapp.qq.com/docs/Wordpress/tms.html) |
@@ -64,9 +64,11 @@
 
 ## 7.GitHub版本迭代记录
 
-### 7.1 tencentcloud-wordpress-plugin-tms v1.0.0
-- 对用户在评论提交的文字出现违规涉黄、爆、恐的内容，使用腾讯云文本内容安全接口进行内容检测和过滤
+### 2020.12.11 tencentcloud-wordpress-plugin-tms v1.0.1
+- 支持在windows环境下运行
 
+### 2020.6.22 tencentcloud-wordpress-plugin-tms v1.0.0
+- 对用户在评论提交的文字出现违规涉黄、爆、恐的内容，使用腾讯云文本内容安全接口进行内容检测和过滤
 ---
 本项目由腾讯云中小企业产品中心建设和维护，了解与该插件使用相关的更多信息，请访问[春雨文档中心](https://openapp.qq.com/docs/Wordpress/tms.html) 
 
