@@ -5,7 +5,7 @@ Donate link: https://openapp.qq.com/docs/Wordpress/tms.html
 Requires at least: 5.0
 Tested up to: 5.4.1
 Requires PHP: 5.6
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -26,5 +26,8 @@ tencentcloud-tms插件是一款腾讯云研发的，提供给WordPress站长使�
 2. screenshot-2.png
 
 == Changelog ==
+= 1.0.1 =
+1. 支持在windows环境下运行
+
 = 1.0.0 =
 1. 对用户在评论提交的文字出现违规涉黄、爆、恐的内容，进行内容检测和过滤
