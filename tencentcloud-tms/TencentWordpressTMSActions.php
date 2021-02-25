@@ -151,6 +151,7 @@ class TencentWordpressTMSActions
      * @param $id
      * @param $comment
      * @return bool
+     * @throws Exception
      */
     public function examineCommentAfterInsertDatabase($id, $comment)
     {
@@ -184,6 +185,51 @@ class TencentWordpressTMSActions
             __('评论检测不通过，包含关键字<strong style="color: red;">' . $response->getData()->Keywords[0] . '</strong>已屏蔽')
         );
         wp_die($error, '评论检测不通过,已屏蔽.', ['back_link' => true]);
+    }
+
+    /**
+     *
+     * @param $post_id
+     * @return string
+     */
+    public function examineCommentWhenSaveArticle($post_id)
+    {
+        if (!$post_id)
+        {
+            $error = new WP_Error(
+                'comment_examined_fail',
+                __('文章不存在')
+            );
+            wp_die($error, '文章不存在。', ['back_link' => true]);
+            exit;
+        }
+        $post = get_post( $post_id );
+        if (!is_object($post)) {
+            return true;
+        }
+        $content = '';
+        if (isset($post->post_title)) {
+            $content .= $post->post_title;
+        }
+
+        if (isset($post->post_content)) {
+            $content .= $post->post_content;
+        }
+        $TMSOptions = self::getTMSOptionsObject();
+        $response = $this->textModeration($TMSOptions, $content);
+        //检测接口异常不影响用户提交评论
+        if ( !($response instanceof TextModerationResponse) ) {
+            return true;
+        }
+        if ( $response->getData()->EvilFlag === 0 || $response->getData()->EvilType === 100 ) {
+            return true;
+        }
+
+        $error = new WP_Error(
+            'comment_examined_fail',
+            __('内容检测不通过，包含关键字<strong style="color: #ff0000;">' . $response->getData()->Keywords[0] . '</strong>请修改后重新提交')
+        );
+        wp_die($error, '内容检测不通过,请修改后重新提交.', ['back_link' => true]);
     }
 
     /**

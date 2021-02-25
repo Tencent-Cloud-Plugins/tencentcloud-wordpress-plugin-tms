@@ -71,6 +71,10 @@ if ($TMSOptions->getFailOption() === $TMSOptions::FAIL_TO_FORBID_SUBMISSION) {
     //评论提交后审核
     add_action('wp_insert_comment', array($tmsPluginActions, 'examineCommentAfterInsertDatabase'), 101, 2);
 }
+
+//新增或修改文章时对文章内容审核
+add_action( 'publish_post', array($tmsPluginActions, 'examineCommentWhenSaveArticle'));
+
 //js脚本引入
 add_action('admin_enqueue_scripts', array($tmsPluginActions, 'loadMyScriptEnqueue'));
 add_action('login_enqueue_scripts', array($tmsPluginActions, 'loadMyScriptEnqueue'));
