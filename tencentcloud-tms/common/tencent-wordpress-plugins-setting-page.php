@@ -192,7 +192,6 @@ function tencent_wordpress_plugin_common_page() {
         </div>
     </div>
 
-
     <script>
         jQuery(function ($) {
             function eye_change_type(input_element, span_eye) {

@@ -40,14 +40,17 @@ class TencentWordpressTMSOptions
     private $allowOption;
     private $failOption;
     private $customKey;
+    private $whitelist = [];
 
-    public function __construct($customKey = self::GLOBAL_KEY, $secretID = '', $secretKey = '', $allowOption = self::ALLOW_TO_PASS, $failOption = self::FAIL_TO_FORBID_SUBMISSION)
+    public function __construct($customKey = self::GLOBAL_KEY, $secretID = '', $secretKey = '',
+                                $allowOption = self::ALLOW_TO_PASS, $failOption = self::FAIL_TO_FORBID_SUBMISSION, $whitelist = '')
     {
         $this->customKey = $customKey;
         $this->secretID = $secretID;
         $this->secretKey = $secretKey;
         $this->allowOption = $allowOption;
         $this->failOption = $failOption;
+        $this->whitelist = $whitelist;
     }
 
     /**
@@ -60,7 +63,7 @@ class TencentWordpressTMSOptions
 
     public function setSecretID($secretID)
     {
-        if ( empty($secretID) ) {
+        if (empty($secretID)) {
             throw new \Exception('secretID不能为空');
         }
         $this->secretID = $secretID;
@@ -68,7 +71,7 @@ class TencentWordpressTMSOptions
 
     public function setSecretKey($secretKey)
     {
-        if ( empty($secretKey) ) {
+        if (empty($secretKey)) {
             throw new \Exception('secretKey不能为空');
         }
         $this->secretKey = $secretKey;
@@ -76,7 +79,7 @@ class TencentWordpressTMSOptions
 
     public function setCustomKey($customKey)
     {
-        if ( !in_array($customKey, array(self::GLOBAL_KEY, self::CUSTOM_KEY)) ) {
+        if (!in_array($customKey, array(self::GLOBAL_KEY, self::CUSTOM_KEY))) {
             throw new \Exception('自定义密钥传参错误');
         }
         $this->customKey = intval($customKey);
@@ -85,7 +88,7 @@ class TencentWordpressTMSOptions
 
     public function setAllowOption($allowOption)
     {
-        if ( !in_array($allowOption, [self::ALLOW_TO_PASS, self::ALLOW_TO_REVIEW]) ) {
+        if (!in_array($allowOption, [self::ALLOW_TO_PASS, self::ALLOW_TO_REVIEW])) {
             throw new \Exception('系统审核通过参数传值错误');
         }
         $this->allowOption = intval($allowOption);
@@ -93,17 +96,22 @@ class TencentWordpressTMSOptions
 
     public function setFailOption($failOption)
     {
-        if ( !in_array($failOption, [self::FAIL_TO_TRASH, self::FAIL_TO_RECYCLE_BIN, self::FAIL_TO_FORBID_SUBMISSION])
+        if (!in_array($failOption, [self::FAIL_TO_TRASH, self::FAIL_TO_RECYCLE_BIN, self::FAIL_TO_FORBID_SUBMISSION])
         ) {
             throw new \Exception('系统不审核通过参数传值错误');
         }
         $this->failOption = $failOption;
     }
 
+    public function setWhitelist($whitelist)
+    {
+        $this->whitelist = $whitelist;
+    }
+
     public function getSecretID()
     {
         $commonOptions = $this->getCommonOptions();
-        if ( $this->customKey === self::GLOBAL_KEY && isset($commonOptions['secret_id']) ) {
+        if ($this->customKey === self::GLOBAL_KEY && isset($commonOptions['secret_id'])) {
             $this->secretID = $commonOptions['secret_id'] ?: '';
         }
         return $this->secretID;
@@ -112,7 +120,7 @@ class TencentWordpressTMSOptions
     public function getSecretKey()
     {
         $commonOptions = $this->getCommonOptions();
-        if ( $this->customKey === self::GLOBAL_KEY && isset($commonOptions['secret_key']) ) {
+        if ($this->customKey === self::GLOBAL_KEY && isset($commonOptions['secret_key'])) {
             $this->secretKey = $commonOptions['secret_key'] ?: '';
         }
         return $this->secretKey;
@@ -131,6 +139,11 @@ class TencentWordpressTMSOptions
     public function getCustomKey()
     {
         return $this->customKey;
+    }
+
+    public function getWhitelist()
+    {
+        return $this->whitelist;
     }
 
 }

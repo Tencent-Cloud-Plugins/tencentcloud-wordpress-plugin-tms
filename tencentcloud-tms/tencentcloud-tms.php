@@ -62,15 +62,25 @@ add_filter('plugin_action_links', array($tmsPluginActions, 'pluginSettingPageLin
 //ajax保存配置
 add_action('wp_ajax_update_TMS_options', array($tmsPluginActions, 'updateTMSOptions'));
 
+//ajax保存敏感词白名单配置
+add_action('wp_ajax_update_whitelist', array($tmsPluginActions, 'updateTMSWhitelist'));
+
+//获取敏感词命中记录列表
+add_action('wp_ajax_get_tms_keyword_list', array($tmsPluginActions, 'getTMSKeywordList'));
+
 add_action('all_admin_notices',array($tmsPluginActions,'commentFormTips'));
 $TMSOptions = $tmsPluginActions::getTMSOptionsObject();
-if ($TMSOptions->getFailOption() === $TMSOptions::FAIL_TO_FORBID_SUBMISSION) {
+if ($TMSOptions->getFailOption() === $TMSOptions::FAIL_TO_FORBID_SUBMISSION && $TMSOptions->getAllowOption() === $TMSOptions::ALLOW_TO_PASS) {
     //评论提交前审核
     add_action('pre_comment_content', array($tmsPluginActions, 'examineCommentBeforeInsertDatabase'));
 } else {
     //评论提交后审核
     add_action('wp_insert_comment', array($tmsPluginActions, 'examineCommentAfterInsertDatabase'), 101, 2);
 }
+
+//新增或修改文章时对文章内容审核
+add_action( 'publish_post', array($tmsPluginActions, 'examineCommentWhenSaveArticle'));
+
 //js脚本引入
 add_action('admin_enqueue_scripts', array($tmsPluginActions, 'loadMyScriptEnqueue'));
 add_action('login_enqueue_scripts', array($tmsPluginActions, 'loadMyScriptEnqueue'));

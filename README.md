@@ -7,7 +7,7 @@
 | ---------- | ------------------------------------------------------------ |
 | 中文名称     | 腾讯云文本内容安全（TMS）插件                                         |
 | 英文名称   | tencentcloud-tms                                       |
-| 最新版本   | v1.0.1 (2020.12.11)                                           |
+| 最新版本   | v1.0.2 (2021.4.28)                                           |
 | 适用平台 | [WordPress](https://wordpress.org/)                             |
 | 适用产品 | [腾讯云文本内容安全（SMS）](https://cloud.tencent.com/product/tms)   |
 | 文档中心   | [春雨文档中心](https://openapp.qq.com/docs/Wordpress/tms.html) |
@@ -42,6 +42,10 @@
 ![](./images/tms2.png)
 >对发文章/评论的场景中提交的文字内容进行检测，检测不通过将会提示如上信息
 
+![](./images/tms3.png)
+>配置敏感词白名单，发文章/评论时将绕过白名单中的关键词检测
+
+![](./images/tms4.png)
 ### 4.2. 名词解释
 - **自定义密钥：** 插件提供统一密钥管理，既可在多个腾讯云插件之间共享SecretId和SecretKey，也可为插件配置单独定义的腾讯云密钥。
 - **Secret ID：** 在[腾讯云API密钥管理](https://console.cloud.tencent.com/cam/capi)上申请的标识身份的 SecretId。
@@ -63,6 +67,9 @@
 > 暂无
 
 ## 7.GitHub版本迭代记录
+### 2021.04.28 tencentcloud-wordpress-plugin-tms v1.0.2
+- 新增敏感词白名单功能和敏感词命中记录功能
+
 ### 2020.12.11 tencentcloud-wordpress-plugin-tms v1.0.1
 - 支持在windows环境下运行
 

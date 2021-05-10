@@ -30,13 +30,16 @@ use TencentWordpressPluginsSettingActions;
 
 class TencentWordpressTMSActions
 {
-    const PLUGIN_TYPE ='tms';
+    const PLUGIN_TYPE = 'tms';
+    const WHITELIST_TABLE_NAME = 'tencent_wordpress_tms_keyword_records';
+
     /**
      * 插件初始化
      */
     public static function initPlugin()
     {
         static::addToPluginCenter();
+        static::createTMSWhitelistTable();
         self::requirePluginCenterClass();
         TencentWordpressPluginsSettingActions::setWordPressSiteID();
         $staticData = self::getTencentCloudWordPressStaticData('activate');
@@ -60,7 +63,8 @@ class TencentWordpressTMSActions
     public static function uninstallPlugin()
     {
         self::requirePluginCenterClass();
-        delete_option( TENCENT_WORDPRESS_TMS_OPTIONS);
+        delete_option(TENCENT_WORDPRESS_TMS_OPTIONS);
+        self::deleteTMSWhitelistTable();
         TencentWordpressPluginsSettingActions::deleteTencentWordpressPlugin(TENCENT_WORDPRESS_TMS_SHOW_NAME);
         $staticData = self::getTencentCloudWordPressStaticData('uninstall');
         TencentWordpressPluginsSettingActions::sendUserExperienceInfo($staticData);
@@ -92,6 +96,43 @@ class TencentWordpressTMSActions
         TencentWordpressPluginsSettingActions::prepareTencentWordressPluginsDB($plugin);
     }
 
+    /**
+     * 创建敏感词命中记录表
+     * @return bool
+     */
+    public static function createTMSWhitelistTable()
+    {
+        $wpdb = $GLOBALS['wpdb'];
+        $tableName = $wpdb->prefix . self::WHITELIST_TABLE_NAME;
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$tableName}'") !== $tableName) {
+            $sql = "CREATE TABLE IF NOT EXISTS `{$tableName}` (
+			    `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		    	`user_login` varchar(100) NOT NULL DEFAULT '',
+			    `user_nicename` varchar(100) NOT NULL DEFAULT '',
+			    `user_email` varchar(32) NOT NULL DEFAULT '',
+			    `user_role` varchar(32) NOT NULL DEFAULT '',
+			    `type` varchar(10) NOT NULL DEFAULT '',
+			    `content` text NOT NULL DEFAULT '',
+			    `post_title` varchar(50) NOT NULL DEFAULT '',
+			    `evil_label` varchar(20) NOT NULL DEFAULT '',
+			    `create_time` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+			    PRIMARY KEY (`id`)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            dbDelta($sql);
+        }
+        return true;
+    }
+
+    public static function deleteTMSWhitelistTable()
+    {
+        $wpdb = $GLOBALS['wpdb'];
+        $tableName = $wpdb->prefix . self::WHITELIST_TABLE_NAME;
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$tableName}'") === $tableName) {
+            $sql = "DROP TABLE {$tableName};";
+            $wpdb->query($sql);
+        }
+    }
 
     public static function getTencentCloudWordPressStaticData($action)
     {
@@ -103,10 +144,9 @@ class TencentWordpressTMSActions
         $staticData['data']['site_app'] = TencentWordpressPluginsSettingActions::getWordPressSiteApp();
         $TMSOptions = self::getTMSOptionsObject();
         $staticData['data']['uin'] = TencentWordpressPluginsSettingActions::getUserUinBySecret($TMSOptions->getSecretID(), $TMSOptions->getSecretKey());
-        $staticData['data']['cust_sec_on'] = $TMSOptions->getCustomKey() === $TMSOptions::CUSTOM_KEY ?1:2;
+        $staticData['data']['cust_sec_on'] = $TMSOptions->getCustomKey() === $TMSOptions::CUSTOM_KEY ? 1 : 2;
         return $staticData;
     }
-
 
 
     /**
@@ -115,7 +155,7 @@ class TencentWordpressTMSActions
     public function initCommonSettingPage()
     {
         self::requirePluginCenterClass();
-        if ( class_exists('TencentWordpressPluginsSettingActions') ) {
+        if (class_exists('TencentWordpressPluginsSettingActions')) {
             TencentWordpressPluginsSettingActions::init();
         }
     }
@@ -132,12 +172,26 @@ class TencentWordpressTMSActions
         $TMSOptions = self::getTMSOptionsObject();
         $response = $this->textModeration($TMSOptions, $content);
         //检测接口异常不影响用户提交评论
-        if ( !($response instanceof TextModerationResponse) ) {
+        if (!($response instanceof TextModerationResponse)) {
             return $content;
         }
-        if ( $response->getData()->EvilFlag === 0 || $response->getData()->EvilType === 100 ) {
+        if ($response->getData()->EvilFlag === 0 || $response->getData()->EvilType === 100) {
             return $content;
         }
+
+        // 命中记录入库
+        $user = wp_get_current_user();
+        $user_login = $user->data->user_login;
+        $user_nicename = $user->data->user_nicename;
+        $user_email = $user->data->user_email;
+        $user_role = $user->roles[0];
+        $type = 'comment';
+        $post_title = $content;
+        $content = $response->getData()->Keywords[0];
+        $evil_label = $response->getData()->EvilLabel;
+        $create_time = date('Y-m-d H:i:s', time());
+        $this->insertTMSKeywordRecord($user_login, $user_nicename, $user_email,
+            $user_role, $type, $content, $post_title, $evil_label, $create_time);
 
         $error = new WP_Error(
             'comment_examined_fail',
@@ -151,28 +205,43 @@ class TencentWordpressTMSActions
      * @param $id
      * @param $comment
      * @return bool
+     * @throws Exception
      */
     public function examineCommentAfterInsertDatabase($id, $comment)
     {
         $TMSOptions = self::getTMSOptionsObject();
-        if ( !($comment instanceof WP_Comment) ) {
+        if (!($comment instanceof WP_Comment)) {
             return false;
         }
         $response = $this->textModeration($TMSOptions, $comment->comment_content);
         //检测接口异常不影响用户提交评论
-        if ( !($response instanceof TextModerationResponse) ) {
+        if (!($response instanceof TextModerationResponse)) {
             return false;
         }
 
-        if ( $response->getData()->EvilFlag === 0 || $response->getData()->EvilType === 100 ) {
+        if ($response->getData()->EvilFlag === 0 || $response->getData()->EvilType === 100) {
             //是否需要人工审核
-            if ( $TMSOptions->getAllowOption() === TencentWordpressTMSOptions::ALLOW_TO_PASS ) {
+            if ($TMSOptions->getAllowOption() === TencentWordpressTMSOptions::ALLOW_TO_PASS) {
                 wp_set_comment_status($id, 'approve');
             }
             return true;
         }
 
-        if ( $TMSOptions->getFailOption() === TencentWordpressTMSOptions::FAIL_TO_TRASH ) {
+        // 命中记录入库
+        $user = wp_get_current_user();
+        $user_login = $user->data->user_login;
+        $user_nicename = $user->data->user_nicename;
+        $user_email = $user->data->user_email;
+        $user_role = $user->roles[0];
+        $type = 'comment';
+        $post_title = $comment;
+        $content = $response->getData()->Keywords[0];
+        $evil_label = $response->getData()->EvilLabel;
+        $create_time = date('Y-m-d H:i:s', time());
+        $this->insertTMSKeywordRecord($user_login, $user_nicename, $user_email,
+            $user_role, $type, $content, $post_title, $evil_label, $create_time);
+
+        if ($TMSOptions->getFailOption() === TencentWordpressTMSOptions::FAIL_TO_TRASH) {
             //标记为垃圾评论
             wp_spam_comment($id);
         } else {
@@ -187,6 +256,64 @@ class TencentWordpressTMSActions
     }
 
     /**
+     *
+     * @param $post_id
+     * @return string
+     * @throws Exception
+     */
+    public function examineCommentWhenSaveArticle($post_id)
+    {
+        if (!$post_id) {
+            $error = new WP_Error(
+                'comment_examined_fail',
+                __('文章不存在')
+            );
+            wp_die($error, '文章不存在。', ['back_link' => true]);
+            exit;
+        }
+        $post = get_post($post_id);
+        if (!is_object($post)) {
+            return true;
+        }
+        $content = '';
+        if (isset($post->post_title)) {
+            $content .= $post->post_title;
+        }
+
+        if (isset($post->post_content)) {
+            $content .= $post->post_content;
+        }
+        $TMSOptions = self::getTMSOptionsObject();
+        $response = $this->textModeration($TMSOptions, $content);
+        //检测接口异常不影响用户提交评论
+        if (!($response instanceof TextModerationResponse)) {
+            return true;
+        }
+        if ($response->getData()->EvilFlag === 0 || $response->getData()->EvilType === 100) {
+            return true;
+        }
+        // 命中记录入库
+        $user = wp_get_current_user();
+        $user_login = $user->data->user_login;
+        $user_nicename = $user->data->user_nicename;
+        $user_email = $user->data->user_email;
+        $user_role = $user->roles[0];
+        $type = 'article';
+        $post_title = $post->post_title;
+        $content = $response->getData()->Keywords[0];
+        $evil_label = $response->getData()->EvilLabel;
+        $create_time = date('Y-m-d H:i:s', time());
+        $this->insertTMSKeywordRecord($user_login, $user_nicename, $user_email,
+            $user_role, $type, $content, $post_title, $evil_label, $create_time);
+
+        $error = new WP_Error(
+            'comment_examined_fail',
+            __('内容检测不通过，包含关键字<strong style="color: #ff0000;">' . $response->getData()->Keywords[0] . '</strong>请修改后重新提交')
+        );
+        wp_die($error, '内容检测不通过,请修改后重新提交.', ['back_link' => true]);
+    }
+
+    /**
      * 腾讯云文本检测
      * @param TencentWordpressTMSOptions $TMSOptions
      * @param $text
@@ -195,6 +322,11 @@ class TencentWordpressTMSActions
      */
     private function textModeration($TMSOptions, $text)
     {
+        $whitelist = self::getTMSOptionsObject()->getWhitelist();
+        if ($whitelist !== '') {
+            $whitelistArr = preg_split("/[;；]+/", $whitelist);
+            $text = str_replace($whitelistArr, '', $text);
+        }
         try {
             $cred = new Credential($TMSOptions->getSecretID(), $TMSOptions->getSecretKey());
             $clientProfile = new ClientProfile();
@@ -209,11 +341,46 @@ class TencentWordpressTMSActions
     }
 
     /**
+     * @param $user_login
+     * @param $user_nicename
+     * @param $user_email
+     * @param $user_role
+     * @param $type
+     * @param $content
+     * @param $post_title
+     * @param $evil_label
+     * @param $create_time
+     * @return mixed
+     */
+    private function insertTMSKeywordRecord($user_login, $user_nicename, $user_email, $user_role, $type, $content,
+                                            $post_title, $evil_label, $create_time)
+    {
+        $wpdb = $GLOBALS['wpdb'];
+        $tableName = $this->getWhiteListTableName(self::WHITELIST_TABLE_NAME);
+        $sql = "INSERT INTO `{$tableName}` (`user_login`, `user_nicename`, `user_email`, `user_role`, `type`, `content`, `post_title`, `evil_label`, `create_time`) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);";
+        return $wpdb->query($wpdb->prepare(
+            $sql, $user_login, $user_nicename, $user_email, $user_role, $type, $content, $post_title, $evil_label, $create_time
+        ));
+    }
+
+    /**
+     * 获取表名称
+     * @param $tableName
+     * @return string
+     */
+    private function getWhiteListTableName($tableName)
+    {
+        $wpdb = $GLOBALS['wpdb'];
+        return $wpdb->prefix . $tableName;
+    }
+
+    /**
      * 评论表单
      */
     public function commentFormTips()
     {
-        if ( $GLOBALS['pagenow'] === 'edit-comments.php' ) {
+        if ($GLOBALS['pagenow'] === 'edit-comments.php') {
             echo '<p style="border-left: 4px solid #09e246;
     padding: 12px;
     margin-left: 0;
@@ -253,7 +420,7 @@ class TencentWordpressTMSActions
     public function loadCSSEnqueue($hookSuffix)
     {
         //只在后台配置页引入
-        if (strpos($hookSuffix,'page_TencentWordpressTMSSettingPage') !== false){
+        if (strpos($hookSuffix, 'page_TencentWordpressTMSSettingPage') !== false) {
             wp_register_style('TMS_back_admin_css', TENCENT_WORDPRESS_TMS_CSS_DIR . 'bootstrap.min.css');
             wp_enqueue_style('TMS_back_admin_css');
         }
@@ -278,7 +445,7 @@ class TencentWordpressTMSActions
     public static function getTMSOptionsObject()
     {
         $TMSOptions = get_option(TENCENT_WORDPRESS_TMS_OPTIONS);
-        if ( $TMSOptions instanceof TencentWordpressTMSOptions ) {
+        if ($TMSOptions instanceof TencentWordpressTMSOptions) {
             return $TMSOptions;
         }
         return new TencentWordpressTMSOptions();
@@ -291,10 +458,14 @@ class TencentWordpressTMSActions
     public function updateTMSOptions()
     {
         try {
-            if ( !current_user_can('manage_options') ) {
+            if (!current_user_can('manage_options')) {
                 wp_send_json_error(array('msg' => '当前用户无权限'));
             }
-            $TMSOptions = new TencentWordpressTMSOptions();
+            $TMSOptions = get_option(TENCENT_WORDPRESS_TMS_OPTIONS);
+            if (!($TMSOptions instanceof TencentWordpressTMSOptions)) {
+                $TMSOptions = new TencentWordpressTMSOptions();
+            }
+
             $TMSOptions->setCustomKey($this->filterPostParam('customKey'));
             $TMSOptions->setSecretID($this->filterPostParam('secretID'));
             $TMSOptions->setSecretKey($this->filterPostParam('secretKey'));
@@ -313,6 +484,73 @@ class TencentWordpressTMSActions
     }
 
     /**
+     * 保存敏感词白名单
+     */
+    public function updateTMSWhitelist()
+    {
+        try {
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(array('msg' => '当前用户无权限'));
+            }
+            $TMSOptions = get_option(TENCENT_WORDPRESS_TMS_OPTIONS);
+            if (!($TMSOptions instanceof TencentWordpressTMSOptions)) {
+                $TMSOptions = new TencentWordpressTMSOptions();
+            }
+            $TMSOptions->setWhitelist($this->filterPostParam('whitelist', ''));
+            update_option(TENCENT_WORDPRESS_TMS_OPTIONS, $TMSOptions, true);
+            wp_send_json_success(array('msg' => '保存成功'));
+        } catch (Exception $exception) {
+            wp_send_json_error(array('msg' => $exception->getMessage()));
+        }
+    }
+
+    public function getTMSKeywordList()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('msg' => '当前用户无权限'));
+        }
+        $keyword = $this->filterPostParam('keyword');
+        $page = $this->filterPostParam('page', 1);
+        $pageSize = $this->filterPostParam('page_size', 10);
+        if ($page < 1 || $page > 999999) {
+            $page = 1;
+        }
+        if ($pageSize < 1 || $pageSize > 50) {
+            $page = 10;
+        }
+        $pageSize = intval($pageSize);
+        $page = intval($page);
+
+        $skip = ($page - 1) * $pageSize;
+
+        if (!empty($keyword) && !is_string($keyword)) {
+            wp_send_json_error(array('msg' => '关键字输入有误！'));
+        }
+        $tableName = $this->getWhiteListTableName(self::WHITELIST_TABLE_NAME);
+        $wpdb = $GLOBALS['wpdb'];
+        if (empty($keyword)) {
+            $sql = "SELECT * FROM `{$tableName}` ORDER BY `id` DESC LIMIT {$skip},{$pageSize}";
+            $result = $wpdb->get_results($wpdb->prepare($sql));
+            //统计总条数
+            $sql = "SELECT COUNT(`id`) as `count` FROM `{$tableName}`";
+            $count = $wpdb->get_row($wpdb->prepare($sql));
+        } else {
+            $sql = "SELECT * FROM `{$tableName}` WHERE `content` LIKE '%s' ORDER BY `id` DESC LIMIT {$skip},{$pageSize}";
+            $result = $wpdb->get_results($wpdb->prepare($sql, '%' . $keyword . '%'));
+            $sql = "SELECT COUNT(`id`) as `count` FROM `{$tableName}` WHERE `content` LIKE '%s'";
+            $count = $wpdb->get_row($wpdb->prepare($sql, '%' . $keyword . '%'));
+        }
+        $return = array('list' => $result, 'totalNum' => 0, 'totalPage' => 0, 'hasNext' => false);
+        if (!$result) {
+            wp_send_json_success($return);
+        }
+        $return['totalNum'] = (int)$count->count;
+        $return['hasNext'] = $count->count > $pageSize * $page;
+        $return['totalPage'] = intval(ceil($count->count / $pageSize));
+        wp_send_json_success($return);
+    }
+
+    /**
      * 更新系统讨论设置
      * @param TencentWordpressTMSOptions $TMSOptions
      */
@@ -320,7 +558,7 @@ class TencentWordpressTMSActions
     {
         $commentWhitelist = 0;
         $commentModeration = 0;
-        if ( $TMSOptions->getAllowOption() === $TMSOptions::ALLOW_TO_REVIEW ) {
+        if ($TMSOptions->getAllowOption() === $TMSOptions::ALLOW_TO_REVIEW) {
             $commentWhitelist = 1;
             $commentModeration = 1;
         }
@@ -336,14 +574,11 @@ class TencentWordpressTMSActions
      */
     public function pluginSettingPageLinkButton($links, $file)
     {
-        if ( $file === TENCENT_WORDPRESS_TMS_BASENAME ) {
+        if ($file === TENCENT_WORDPRESS_TMS_BASENAME) {
             $links[] = '<a href="admin.php?page=TencentWordpressTMSSettingPage">设置</a>';
         }
         return $links;
     }
 
 }
-
-
-
 
