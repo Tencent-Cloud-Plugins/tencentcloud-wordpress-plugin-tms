@@ -15,6 +15,7 @@
  */
 jQuery(function ($) {
     var ajaxUrl = $('#tms-options-form').data('ajax-url');
+    var pageSize = 10;
     //展示接口返回
     function showAjaxReturnMsg(msg,success) {
         var parent = $('#show-tms-ajax-return-msg').parent();
@@ -57,6 +58,44 @@ jQuery(function ($) {
     $('#tms-secret-key-change-type').click(function () {
         changeInputType($('#txc-tms-secret-key'), $(this));
     });
+
+    $('#sub-tab-settings').click(function () {
+        $('#sub-tab-settings').removeClass('active').addClass('active');
+        $('#sub-tab-whitelist').removeClass('active');
+        $('#sub-tab-records').removeClass('active');
+
+        $('#body-sub-tab-settings').addClass('active show');
+        $('#body-sub-tab-whitelist').removeClass('active show');
+        $('#body-sub-tab-records').removeClass('active show');
+
+    });
+
+    $('#sub-tab-whitelist').click(function () {
+        $('#sub-tab-settings').removeClass('active');
+        $('#sub-tab-whitelist').removeClass('active').addClass('active');
+        $('#sub-tab-records').removeClass('active');
+
+        $('#body-sub-tab-settings').removeClass('active show');
+        $('#body-sub-tab-whitelist').addClass('active show');
+        $('#body-sub-tab-records').removeClass('active show');
+    });
+
+    $('#sub-tab-records').click(function () {
+        $('#sub-tab-settings').removeClass('active');
+        $('#sub-tab-whitelist').removeClass('active');
+        $('#sub-tab-records').removeClass('active').addClass('active');
+
+        $('#body-sub-tab-settings').removeClass('active show');
+        $('#body-sub-tab-whitelist').removeClass('active show');
+        $('#body-sub-tab-records').addClass('active show');
+
+        getTmsData(1,pageSize)
+        $("#tms_current_page")[0].innerHTML = '1';
+        $('#record_previous_page').removeClass('disabled').addClass('disabled');
+        $('#record_previous_page').removeAttr('disabled');
+        $('#record_next_page').removeAttr('disabled');
+        $('#record_next_page').removeClass('disabled');
+    });
     //ajax保存配置
     $('#tms-options-update-button').click(function () {
         var secretID = $("#txc-tms-secret-id").val()
@@ -88,4 +127,113 @@ jQuery(function ($) {
         });
     });
 
+    $('#tms-options-whitelist-button').click(function () {
+        var whitelist = $("#txc-tms-whitelist").val()
+        $.ajax({
+            type: "post",
+            url: ajaxUrl,
+            dataType:"json",
+            data: {
+                action: "update_whitelist",
+                whitelist: whitelist
+            },
+            success: function(response) {
+                showAjaxReturnMsg(response.data.msg,response.success)
+                if (response.success){
+                    setTimeout(function(){
+                        window.location.reload();//刷新当前页面.
+                    },2000)
+                }
+            }
+        });
+    });
+
+    //命中记录
+    $('#search_tms_keyword_button').click(function () {
+        $("#more_list  tr:not(:first)").remove();
+        getTmsData(1,pageSize)
+        $("#tms_current_page")[0].innerHTML = '1';
+        $('#record_previous_page').removeClass('disabled').addClass('disabled');
+        $('#record_previous_page').removeAttr('disabled');
+        $('#record_next_page').removeAttr('disabled');
+        $('#record_next_page').removeClass('disabled');
+    });
+
+    //获取上一页
+    $('#record_previous_page').click(function () {
+         if ($(this).attr('disabled') === 'disabled') {
+            return;
+         }
+        var currentPage = $(this).attr('data-current-page');
+        if (currentPage === '1' || currentPage < '1') {
+            return;
+        }
+        $("#more_list  tr:not(:first)").remove();
+        currentPage--
+        getTmsData(currentPage,pageSize);
+        $("#tms_current_page")[0].innerHTML = currentPage;
+        $(this).attr('data-current-page',currentPage);
+        $('#record_next_page').removeAttr('disabled');
+        $('#record_next_page').removeClass('disabled');
+    });
+
+    //获取下一页
+    $('#record_next_page').click(function () {
+        if ($(this).attr('disabled') === 'disabled') {
+            return;
+        }
+        var currentPage = $('#record_previous_page').attr('data-current-page');
+        currentPage++
+        $("#more_list  tr:not(:first)").remove();
+        getTmsData(currentPage,pageSize);
+        $("#tms_current_page")[0].innerHTML = currentPage;
+        $('#record_previous_page').removeAttr('disabled');
+        $('#record_previous_page').attr('data-current-page',currentPage).removeClass('disabled');
+    });
+
+    //ajax获取短信记录
+    function getTmsData(page,pageSize){
+        var searchKeyword = $("#search_keyword_list").val()
+        $.ajax({
+            type: "post",
+            url: ajaxUrl,
+            dataType:"json",
+            data: {
+                action: "get_tms_keyword_list",
+                keyword: searchKeyword,
+                page:page,
+                page_size:pageSize
+            },
+            success: function(response) {
+                var list = response.data.list;
+                var html = '';
+                var status = '';
+                if (!response.success) {
+                    alert(response.data.msg);
+                    return;
+                }
+                //填充短信记录表格
+                $.each(list, function(i, item) {
+                    html += '<tr>';
+                    html += '<td>' +item['user_login']+'('+ item['user_nicename'] +')'+'</td>';
+                    html += '<td>' +item['user_email']+'</td>';
+                    html += '<td>' +item['user_role']+'</td>';
+                    html += '<td>' +item['type']+'</td>';
+                    html += '<td>' +item['content']+'</td>';
+                    html += '<td>' +item['post_title']+'</td>';
+                    html += '<td>' +item['evil_label']+'</td>';
+                    html += '<td>' +item['create_time']+'</td>';
+                    html += '</tr>';
+                });
+                $('#more_list').append(html);
+
+                if (page <= 1) {
+                    $("#record_previous_page").attr('disabled','disabled').addClass('disabled');
+                }
+                if (!response.data.hasNext){
+                    $("#record_next_page").attr('disabled','disabled').addClass('disabled');
+                }
+            }
+        });
+    }
 });
